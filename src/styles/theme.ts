@@ -13,7 +13,7 @@ const config = defineConfig({
           500: { value: "#737373" },
           600: { value: "#525252" },
           700: { value: "#404040" },
-          800: { value: "#262626" },    // Primary action color (dark gray)
+          800: { value: "#262626" },
           900: { value: "#171717" },
           950: { value: "#0a0a0a" },
         },
@@ -26,7 +26,7 @@ const config = defineConfig({
           500: { value: "#ec4899" },
           600: { value: "#db2777" },
           700: { value: "#be185d" },
-          800: { value: "#9d174d" },     // Only for FAB
+          800: { value: "#9d174d" },
           900: { value: "#831843" },
           950: { value: "#500724" },
         },
@@ -82,20 +82,19 @@ const config = defineConfig({
       },
       radii: {
         none: { value: "0" },
-        sm: { value: "0.25rem" },      // 4px - smaller radius
-        base: { value: "0.375rem" },   // 6px - primary radius from design
-        md: { value: "0.5rem" },       // 8px
-        lg: { value: "0.75rem" },      // 12px
-        xl: { value: "1rem" },         // 16px
-        "2xl": { value: "1.5rem" },    // 24px
-        full: { value: "9999px" },     // Circle
+        sm: { value: "0.25rem" },      // 4px - NOT USED (kept for compatibility)
+        base: { value: "0.25rem" },    // 4px - for input fields, buttons, and badges/tags
+        md: { value: "0.75rem" },      // 12px - for cards
+        lg: { value: "1rem" },         // 16px
+        xl: { value: "1.5rem" },       // 24px
+        "2xl": { value: "2rem" },      // 32px
+        full: { value: "9999px" },     // circles
       },
     },
     semanticTokens: {
       colors: {
-        // Primary Actions - Dark Gray (NOT pink, except FAB)
         primary: {
-          solid: { value: "{colors.neutral.800}" },      // Dark gray for buttons
+          solid: { value: "{colors.neutral.800}" },
           contrast: { value: "white" },
           fg: { value: "{colors.neutral.800}" },
           muted: { value: "{colors.neutral.200}" },
@@ -103,9 +102,8 @@ const config = defineConfig({
           emphasized: { value: "{colors.neutral.900}" },
           focusRing: { value: "{colors.neutral.800}" },
         },
-        // FAB specific - Pink accent (ONLY for FAB)
         fab: {
-          bg: { value: "{colors.pink.800}" },            // Pink ONLY for FAB
+          bg: { value: "{colors.pink.800}" },
           hover: { value: "{colors.pink.900}" },
           active: { value: "{colors.pink.950}" },
           text: { value: "white" },
@@ -163,11 +161,11 @@ const config = defineConfig({
           bg: { value: "white" },
           border: { value: "{colors.neutral.200}" },
           placeholder: { value: "{colors.neutral.400}" },
-          focusBorder: { value: "{colors.neutral.800}" },  // Dark gray focus
+          focusBorder: { value: "{colors.neutral.800}" },
         },
         button: {
           primary: {
-            bg: { value: "{colors.neutral.800}" },        // Dark gray primary button
+            bg: { value: "{colors.neutral.800}" },
             hover: { value: "{colors.neutral.900}" },
             active: { value: "{colors.neutral.950}" },
             text: { value: "white" },

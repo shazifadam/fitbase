@@ -1,10 +1,10 @@
 "use client"
 
 import { Box, Heading, Text, VStack, HStack, Input, Badge } from "@chakra-ui/react"
-import { Search, MoreVertical, Home, Users, BarChart3, Menu, Plus } from "lucide-react"
+import { Search, MoreVertical } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getClients } from "@/actions/clients"
-import Link from "next/link"
+import BottomNav from "@/components/layout/BottomNav"
 
 type Client = {
   id: string
@@ -70,7 +70,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <Box minH="100vh" bg="bg" pb="24">
+    <Box minH="100vh" bg="bg" pb="32">
       {/* Header */}
       <VStack align="stretch" gap="4" bg="bg.surface" px="4" pt="6" pb="4" borderBottomWidth="1px" borderColor="border">
         <Heading fontFamily="heading" fontSize="2xl" fontWeight="medium" color="fg">
@@ -154,7 +154,7 @@ export default function ClientsPage() {
             <Box
               key={client.id}
               bg="bg.surface"
-              borderRadius="base"
+              borderRadius="md"
               borderWidth="1px"
               borderColor="border"
               p="4"
@@ -183,9 +183,9 @@ export default function ClientsPage() {
                   py="0.5"
                   fontSize="xs"
                   fontWeight="normal"
-                  borderRadius="sm"
-              >
-                  {client.schedule_set === 'sunday' ? 'Sun Set' : client.schedule_set === 'saturday' ? 'Sat Set' : 'Custom'}
+                  borderRadius="base"
+                >
+                {client.schedule_set === 'sunday' ? 'Sun Set' : client.schedule_set === 'saturday' ? 'Sat Set' : 'Custom'}
                 </Badge>
                 {client.tier && (
                   <Badge
@@ -195,7 +195,7 @@ export default function ClientsPage() {
                     py="0.5"
                     fontSize="xs"
                     fontWeight="normal"
-                    borderRadius="sm"
+                    borderRadius="base"
                   >
                     {client.tier.name}
                   </Badge>
@@ -206,56 +206,7 @@ export default function ClientsPage() {
         )}
       </VStack>
 
-      {/* Bottom Navigation - Fixed */}
-      <HStack 
-        position="fixed" 
-        bottom="0" 
-        left="0" 
-        right="0" 
-        bg="bg.surface" 
-        borderTopWidth="1px" 
-        borderColor="border"
-        justify="space-around"
-        py="3"
-        px="2"
-        zIndex="999"
-      >
-        <Link href="/">
-          <VStack gap="1" cursor="pointer">
-            <Home size={24} color="#737373" strokeWidth={2} />
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-              Home
-            </Text>
-          </VStack>
-        </Link>
-        
-        <Link href="/clients">
-          <VStack gap="1" cursor="pointer">
-            <Users size={24} color="#0a0a0a" strokeWidth={2} />
-            <Text fontSize="xs" fontWeight="normal" color="fg">
-              Clients
-            </Text>
-          </VStack>
-        </Link>
-        
-        <Box bg="fab.bg" borderRadius="full" p="3" cursor="pointer" position="relative" top="-4" boxShadow="lg">
-          <Plus size={24} color="white" strokeWidth={2.5} />
-        </Box>
-        
-        <VStack gap="1" cursor="pointer">
-          <BarChart3 size={24} color="#737373" strokeWidth={2} />
-          <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-            Stats
-          </Text>
-        </VStack>
-        
-        <VStack gap="1" cursor="pointer">
-          <Menu size={24} color="#737373" strokeWidth={2} />
-          <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-            More
-          </Text>
-        </VStack>
-      </HStack>
+      <BottomNav />
     </Box>
   )
 }
