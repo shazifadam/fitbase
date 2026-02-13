@@ -1,65 +1,145 @@
-import Image from "next/image";
+"use client"
+
+import { Box, Heading, Text, VStack, HStack, Badge } from "@chakra-ui/react"
+import { Dumbbell, Users, TrendingUp } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center" p="4">
+      <VStack gap="8" maxW="600px" w="full">
+        {/* Logo & Title */}
+        <VStack gap="4">
+          <Dumbbell size={64} color="#9d174d" strokeWidth={2} />
+          <Heading 
+            fontFamily="heading" 
+            fontSize="4xl" 
+            fontWeight="medium"  // 500 - Medium
+            color="fg"
+            textAlign="center"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Fitbase
+          </Heading>
+          <Text 
+            fontSize="lg" 
+            fontWeight="normal"  // 400 - Regular
+            color="fg.muted"
+            textAlign="center"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+            Personal Trainer Client Management
+          </Text>
+        </VStack>
+
+        {/* Feature Cards */}
+        <VStack gap="3" w="full">
+          <Box
+            bg="bg.surface"
+            borderWidth="1px"
+            borderColor="border"
+            borderRadius="md"
+            p="4"
+            w="full"
+          >
+            <HStack gap="3">
+              <Box bg="primary.solid" p="2" borderRadius="base">
+                <Users size={20} color="white" />
+              </Box>
+              <VStack align="start" gap="0">
+                <Text fontWeight="medium" color="fg">  {/* Medium */}
+                  Client Management
+                </Text>
+                <Text fontSize="sm" fontWeight="normal" color="fg.muted">  {/* Regular */}
+                  Track attendance & progress
+                </Text>
+              </VStack>
+            </HStack>
+          </Box>
+
+          <Box
+            bg="bg.surface"
+            borderWidth="1px"
+            borderColor="border"
+            borderRadius="md"
+            p="4"
+            w="full"
+          >
+            <HStack gap="3">
+              <Box bg="success.solid" p="2" borderRadius="base">
+                <TrendingUp size={20} color="white" />
+              </Box>
+              <VStack align="start" gap="0">
+                <Text fontWeight="medium" color="fg">  {/* Medium */}
+                  Analytics Dashboard
+                </Text>
+                <Text fontSize="sm" fontWeight="normal" color="fg.muted">  {/* Regular */}
+                  Monitor your business growth
+                </Text>
+              </VStack>
+            </HStack>
+          </Box>
+        </VStack>
+
+        {/* Status Badge */}
+        <HStack gap="2">
+          <Badge 
+            bg="primary.solid" 
+            color="primary.contrast"
+            px="4"
+            py="2"
+            borderRadius="md"
+            fontWeight="medium"  // Medium
+          >
+            Coming Soon
+          </Badge>
+          <Badge 
+            bg="bg.surface"
+            borderWidth="1px"
+            borderColor="border"
+            color="fg.muted"
+            px="4"
+            py="2"
+            borderRadius="md"
+            fontWeight="normal"  // Regular
+          >
+            Version 1.0
+          </Badge>
+        </HStack>
+
+        {/* Typography Demo */}
+        <Box 
+          bg="bg.surface" 
+          borderWidth="1px" 
+          borderColor="border" 
+          borderRadius="md" 
+          p="6" 
+          w="full"
+        >
+          <VStack align="start" gap="3">
+            <Heading fontSize="2xl" fontWeight="medium" color="fg">
+              Font Weights Demo
+            </Heading>
+            <Text fontSize="md" fontWeight="normal" color="fg.muted">
+              Body text uses Inter Regular (400) for optimal readability
+            </Text>
+            <Text fontSize="md" fontWeight="medium" color="fg">
+              Emphasized text uses Inter Medium (500) for headers
+            </Text>
+            <HStack gap="2">
+              <Text fontSize="sm" fontWeight="normal" color="fg.subtle">
+                Regular
+              </Text>
+              <Text fontSize="sm" fontWeight="medium" color="fg">
+                Medium
+              </Text>
+              <Text fontSize="sm" fontWeight="semibold" color="fg">
+                Semibold
+              </Text>
+              <Text fontSize="sm" fontWeight="bold" color="fg">
+                Bold
+              </Text>
+            </HStack>
+          </VStack>
+        </Box>
+      </VStack>
+    </Box>
+  )
 }
