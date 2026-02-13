@@ -13,7 +13,7 @@ const config = defineConfig({
           500: { value: "#737373" },
           600: { value: "#525252" },
           700: { value: "#404040" },
-          800: { value: "#262626" },
+          800: { value: "#262626" },    // Primary action color (dark gray)
           900: { value: "#171717" },
           950: { value: "#0a0a0a" },
         },
@@ -26,7 +26,7 @@ const config = defineConfig({
           500: { value: "#ec4899" },
           600: { value: "#db2777" },
           700: { value: "#be185d" },
-          800: { value: "#9d174d" },
+          800: { value: "#9d174d" },     // Only for FAB
           900: { value: "#831843" },
           950: { value: "#500724" },
         },
@@ -71,36 +71,44 @@ const config = defineConfig({
         },
       },
       fonts: {
-        heading: { value: "var(--font-inter)" },  // Inter for headings
-        body: { value: "var(--font-inter)" },     // Inter for body
+        heading: { value: "var(--font-inter)" },
+        body: { value: "var(--font-inter)" },
       },
       fontWeights: {
-        normal: { value: "400" },    // Regular - for body text
-        medium: { value: "500" },    // Medium - for headings
+        normal: { value: "400" },
+        medium: { value: "500" },
         semibold: { value: "600" },
         bold: { value: "700" },
       },
       radii: {
         none: { value: "0" },
-        sm: { value: "0.25rem" },
-        base: { value: "0.5rem" },
-        md: { value: "0.75rem" },    // 12px - primary from screenshots
-        lg: { value: "1rem" },
-        xl: { value: "1.5rem" },
-        "2xl": { value: "2rem" },
-        full: { value: "9999px" },
+        sm: { value: "0.25rem" },      // 4px - smaller radius
+        base: { value: "0.375rem" },   // 6px - primary radius from design
+        md: { value: "0.5rem" },       // 8px
+        lg: { value: "0.75rem" },      // 12px
+        xl: { value: "1rem" },         // 16px
+        "2xl": { value: "1.5rem" },    // 24px
+        full: { value: "9999px" },     // Circle
       },
     },
     semanticTokens: {
       colors: {
+        // Primary Actions - Dark Gray (NOT pink, except FAB)
         primary: {
-          solid: { value: "{colors.pink.800}" },
+          solid: { value: "{colors.neutral.800}" },      // Dark gray for buttons
           contrast: { value: "white" },
-          fg: { value: "{colors.pink.800}" },
-          muted: { value: "{colors.pink.100}" },
-          subtle: { value: "{colors.pink.50}" },
-          emphasized: { value: "{colors.pink.900}" },
-          focusRing: { value: "{colors.pink.800}" },
+          fg: { value: "{colors.neutral.800}" },
+          muted: { value: "{colors.neutral.200}" },
+          subtle: { value: "{colors.neutral.100}" },
+          emphasized: { value: "{colors.neutral.900}" },
+          focusRing: { value: "{colors.neutral.800}" },
+        },
+        // FAB specific - Pink accent (ONLY for FAB)
+        fab: {
+          bg: { value: "{colors.pink.800}" },            // Pink ONLY for FAB
+          hover: { value: "{colors.pink.900}" },
+          active: { value: "{colors.pink.950}" },
+          text: { value: "white" },
         },
         success: {
           solid: { value: "{colors.success.600}" },
@@ -155,13 +163,13 @@ const config = defineConfig({
           bg: { value: "white" },
           border: { value: "{colors.neutral.200}" },
           placeholder: { value: "{colors.neutral.400}" },
-          focusBorder: { value: "{colors.pink.800}" },
+          focusBorder: { value: "{colors.neutral.800}" },  // Dark gray focus
         },
         button: {
           primary: {
-            bg: { value: "{colors.pink.800}" },
-            hover: { value: "{colors.pink.900}" },
-            active: { value: "{colors.pink.950}" },
+            bg: { value: "{colors.neutral.800}" },        // Dark gray primary button
+            hover: { value: "{colors.neutral.900}" },
+            active: { value: "{colors.neutral.950}" },
             text: { value: "white" },
           },
           secondary: {
@@ -198,9 +206,9 @@ const config = defineConfig({
             border: { value: "{colors.neutral.300}" },
           },
           bodyTrans: {
-            bg: { value: "{colors.pink.50}" },
-            text: { value: "{colors.pink.900}" },
-            border: { value: "{colors.pink.200}" },
+            bg: { value: "{colors.neutral.100}" },
+            text: { value: "{colors.neutral.900}" },
+            border: { value: "{colors.neutral.300}" },
           },
           rehab: {
             bg: { value: "{colors.warning.50}" },
