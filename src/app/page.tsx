@@ -141,7 +141,7 @@ export default function HomePage() {
       </Box>
       </VStack>
 
-      <HStack position="fixed" bottom="0" left="0" right="0" bg="bg.surface" borderTopWidth="1px" borderColor="border" justify="space-around" py="3" px="2">
+      <HStack position="fixed" bottom="0" left="0" right="0" bg="bg.surface" borderTopWidth="1px" borderColor="border" justify="space-around" py="3" px="2" zIndex="999">
         <Link href="/">
           <VStack gap="1" cursor="pointer">
             <Home size={24} color="#0a0a0a" strokeWidth={2} />
