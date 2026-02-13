@@ -2,8 +2,40 @@
 
 import { Box, Heading, Text, VStack, HStack, Badge } from "@chakra-ui/react"
 import { Home, Users, BarChart3, Menu, Plus, MoreVertical } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 
 export default function HomePage() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/auth/login')
+      } else {
+        setUser(session.user)
+        setLoading(false)
+      }
+    }
+    
+    checkUser()
+  }, [router, supabase.auth])
+
+  if (loading) {
+    return (
+      <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center">
+        <Text fontSize="lg" color="fg.muted">Loading...</Text>
+      </Box>
+    )
+  }
+
   return (
     <Box minH="100vh" bg="bg" pb="24">
       <VStack 
@@ -27,7 +59,7 @@ export default function HomePage() {
               fontWeight="medium"
               color="fg"
             >
-              Shazif Adam
+              {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Trainer'}
             </Heading>
           </VStack>
           <Box
@@ -42,7 +74,7 @@ export default function HomePage() {
             fontWeight="medium"
             fontSize="lg"
           >
-            DA
+            {user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'DA'}
           </Box>
         </HStack>
         
@@ -106,48 +138,27 @@ export default function HomePage() {
               <MoreVertical size={20} color="#737373" />
             </Box>
           </HStack>
-        </Box>
-    </VStack>
-
-      <VStack align="stretch" gap="3" px="4" mt="6">
-        <Heading fontSize="lg" fontWeight="medium" color="fg">
-          Attended
-        </Heading>
-        
-        <Box bg="bg.surface" borderRadius="base" borderWidth="1px" borderColor="border" p="4">
-          <HStack justify="space-between" mb="2">
-            <VStack align="start" gap="1">
-              <Text fontWeight="medium" fontSize="md" color="fg">
-                Ahmed Ali
-              </Text>
-              <Text fontSize="sm" fontWeight="normal" color="fg.muted">
-                Strength • Body-Trans
-              </Text>
-            </VStack>
-            <Box cursor="pointer">
-              <MoreVertical size={20} color="#737373" />
-            </Box>
-          </HStack>
-          <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-            Marked as attended at 16:23
-          </Text>
-        </Box>
+      </Box>
       </VStack>
 
-      <HStack position="fixed" bottom="0" left="0" right="0" bg="bg.surface" borderTopWidth="1px"orderColor="border" justify="space-around" py="3" px="2">
-        <VStack gap="1" cursor="pointer">
-          <Home size={24} color="#0a0a0a" strokeWidth={2} />
-          <Text fontSize="xs" fontWeight="normal" color="fg">
-            Home
-          </Text>
-        </VStack>
+      <HStack position="fixed" bottom="0" left="0" right="0" bg="bg.surface" borderTopWidth="1px" borderColor="border" justify="space-around" py="3" px="2">
+        <Link href="/">
+          <VStack gap="1" cursor="pointer">
+            <Home size={24} color="#0a0a0a" strokeWidth={2} />
+            <Text fontSize="xs" fontWeight="normal" color="fg">
+              Home
+            </Text>
+          </VStack>
+        </Link>
         
-        <VStack gap="1" cursor="pointer">
-          <Users size={24} color="#737373" strokeWidth={2} />
-          <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-            Clients
-          </Text>
-        </VStack>
+        <Link href="/clients">
+          <VStack gap="1" cursor="pointer">
+            <Users size={24} color="#737373" strokeWidth={2} />
+            <Text fontSize="xs" fontWeight="normal" color="fg.muted">
+              Clients
+            </Text>
+          </VStack>
+        </Link>
         
         <Box bg="fab.bg" borderRadius="full" p="3" cursor="pointer" position="relative" top="-4" boxShadow="lg">
           <Plus size={24} color="white" strokeWidth={2.5} />
