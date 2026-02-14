@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 export async function createClientAction(data: {
   name: string
   phone: string
-  tier_id: string
+  tier_id: string | null
   training_programs: string[]
   schedule_set: 'sunday' | 'saturday' | 'custom'
   custom_days?: string[]

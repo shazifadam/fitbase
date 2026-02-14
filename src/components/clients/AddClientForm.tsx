@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Box,
   Button,
@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react"
 import { X, Check } from "lucide-react"
 import { createClientAction } from "@/actions/clients"
+import { getTiers, createDefaultTiers } from "@/actions/tiers"
 import { useRouter } from "next/navigation"
 
 type AddClientFormProps = {
@@ -43,6 +44,7 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
   const [step, setStep] = useState<'phone' | 'details'>('phone')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [tiers, setTiers] = useState<any[]>([])
 
   // Form data
   const [phone, setPhone] = useState('')
@@ -55,6 +57,25 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
   const [defaultTime, setDefaultTime] = useState('09:00')
   const [dayTimes, setDayTimes] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    loadTiers()
+  }, [])
+
+  const loadTiers = async () => {
+    // Try to get existing tiers
+    let result = await getTiers()
+    
+    // If no tiers exist, create default ones
+    if (!result.data || result.data.length === 0) {
+      await createDefaultTiers()
+      result = await getTiers()
+    }
+    
+    if (result.data) {
+      setTiers(result.data)
+    }
+  }
+
   const handlePhoneSubmit = async () => {
     if (!phone) {
       setError('Phone number is required')
@@ -66,7 +87,7 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
 
   const handleSubmit = async () => {
     // Validation
-    if (!name || !phone || !tierId || trainingPrograms.length === 0) {
+    if (!name || !phone || trainingPrograms.length === 0) {
       setError('Please fill in all required fields')
       return
     }
@@ -104,7 +125,7 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
     const result = await createClientAction({
       name,
       phone,
-      tier_id: tierId,
+      tier_id: tierId || null, // Allow null if no tier selected
       training_programs: trainingPrograms,
       schedule_set: scheduleSet,
       custom_days: scheduleSet === 'custom' ? customDays : [],
@@ -151,7 +172,7 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
     >
       <Box
         bg="bg.surface"
-        borderTopRadius="none"
+        borderTopRadius="xl"
         w="full"
         maxH="90vh"
         display="flex"
@@ -221,7 +242,7 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
 
               <VStack align="stretch" gap="2">
                 <Text fontSize="sm" fontWeight="medium" color="fg">
-                  Tier *
+                  Tier (Optional)
                 </Text>
                 <Box
                   as="select"
@@ -238,10 +259,12 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
                   fontWeight="normal"
                   _focus={{ borderColor: "input.focusBorder", outline: "none" }}
                 >
-                  <option value="">Select tier</option>
-                  <option value="temp-bronze">Bronze - MVR 1500</option>
-                  <option value="temp-silver">Silver - MVR 2500</option>
-                  <option value="temp-gold">Gold - MVR 3500</option>
+                  <option value="">Select tier (optional)</option>
+                  {tiers.map((tier) => (
+                    <option key={tier.id} value={tier.id}>
+                      {tier.name} - MVR {tier.amount}
+                    </option>
+                  ))}
                 </Box>
               </VStack>
 
