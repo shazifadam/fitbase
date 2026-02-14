@@ -38,7 +38,6 @@ export async function markAttendance(data: {
     reschedule_reason: data.reschedule_reason || null,
   }
 
-  // Set workout_started_at when marking as attending
   if (data.status === 'attending') {
     updateData.workout_started_at = new Date().toISOString()
   }
@@ -67,6 +66,7 @@ export async function markAttendance(data: {
   revalidatePath('/')
   revalidatePath('/clients')
   revalidatePath(`/clients/${data.client_id}`)
+  revalidatePath(`/clients/${data.client_id}/attendance`)
   revalidatePath('/attending')
   
   return { success: true }
@@ -102,6 +102,102 @@ export async function getClientAttendance(clientId: string, limit?: number) {
 
   if (error) return { error: error.message }
   return { data }
+}
+
+export async function getClientMonthlyAttendance(clientId: string, year: number, month: number) {
+  const supabase = await createSupabaseClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: trainer } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', user.id)
+    .single()
+
+  if (!trainer) return { error: 'Trainer not found' }
+
+  // Get client details
+  const { data: client } = await supabase
+    .from('clients')
+    .select('schedule_set, custom_days, session_times')
+    .eq('id', clientId)
+    .single()
+
+  if (!client) return { error: 'Client not found' }
+
+  // Get attendance records for the month
+  // Create date strings without timezone conversion
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+  const daysInMonth = new Date(year, month, 0).getDate()
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
+
+  const { data: attendanceRecords } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('trainer_id', trainer.id)
+    .gte('scheduled_date', startDate)
+    .lte('scheduled_date', endDate)
+
+  console.log('[Server] Attendance records:', attendanceRecords)
+
+  // Generate all scheduled dates for the month
+  const scheduledDates: any[] = []
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    // Create date string without timezone conversion
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    
+    // Get day of week from the date string
+    const date = new Date(dateStr + 'T12:00:00') // Use noon to avoid timezone issues
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
+
+    let isScheduled = false
+
+    if (client.schedule_set === 'sunday' && ['sun', 'tue', 'thu'].includes(dayOfWeek)) {
+      isScheduled = true
+    } else if (client.schedule_set === 'saturday' && ['sat', 'mon', 'wed'].includes(dayOfWeek)) {
+      isScheduled = true
+    } else if (client.schedule_set === 'custom' && client.custom_days?.includes(dayOfWeek)) {
+      isScheduled = true
+    }
+
+    if (isScheduled) {
+      const sessionTime = client.session_times?.[dayOfWeek] || '09:00'
+      const normalizedSessionTime = sessionTime.length === 5 ? `${sessionTime}:00` : sessionTime
+
+      const attendance = attendanceRecords?.find(a => {
+        const normalizedDbTime = a.scheduled_time.length === 5 ? `${a.scheduled_time}:00` : a.scheduled_time
+        const match = a.scheduled_date === dateStr && normalizedDbTime === normalizedSessionTime
+        
+        if (match) {
+          console.log(`[Server] MATCH FOUND for ${dateStr}:`, a.status)
+        }
+        
+        return match
+      })
+
+      console.log(`[Server] Day ${day} (${dateStr}, ${dayOfWeek}):`, {
+        sessionTime,
+        status: attendance?.status || 'scheduled'
+      })
+
+      scheduledDates.push({
+        date: dateStr,
+        day: day,
+        dayOfWeek,
+        scheduled_time: sessionTime,
+        status: attendance?.status || 'scheduled',
+        marked_at: attendance?.created_at || null,
+      })
+    }
+  }
+
+  console.log('[Server] Final count - Total:', scheduledDates.length, 'Attended:', scheduledDates.filter(d => d.status === 'attended').length)
+
+  return { data: scheduledDates }
 }
 
 export async function getTodaySchedule() {
@@ -197,7 +293,6 @@ export async function getAttendingClients() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // Get all attending clients for today
   const { data: attendanceRecords } = await supabase
     .from('attendance')
     .select(`

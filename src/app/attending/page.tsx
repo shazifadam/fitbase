@@ -1,12 +1,12 @@
 "use client"
 
-import { Box, Heading, Text, VStack, HStack } from "@chakra-ui/react"
-import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react"
+import { Box, Heading, Text, VStack, HStack, Button } from "@chakra-ui/react"
+import { ArrowLeft, ChevronDown, ChevronUp, Check } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import BottomNav from "@/components/layout/BottomNav"
-import { getAttendingClients } from "@/actions/attendance"
+import { getAttendingClients, markAttendance } from "@/actions/attendance"
 
 export default function AttendingPage() {
   const router = useRouter()
@@ -14,6 +14,7 @@ export default function AttendingPage() {
   const [loading, setLoading] = useState(true)
   const [attendingClients, setAttendingClients] = useState<any[]>([])
   const [expandedClient, setExpandedClient] = useState<string | null>(null)
+  const [completingClient, setCompletingClient] = useState<string | null>(null)
 
   useEffect(() => {
     loadAttendingClients()
@@ -25,6 +26,28 @@ export default function AttendingPage() {
       setAttendingClients(result.data)
     }
     setLoading(false)
+  }
+
+  const handleMarkAttended = async (client: any) => {
+    setCompletingClient(client.client_id)
+
+    const today = new Date().toISOString().split('T')[0]
+    const normalizedTime = client.scheduled_time.length === 5 ? `${client.scheduled_time}:00` : client.scheduled_time
+
+    const result = await markAttendance({
+      client_id: client.client_id,
+      scheduled_date: today,
+      scheduled_time: normalizedTime,
+      status: 'attended',
+    })
+
+    if (result.success) {
+      // Remove from attending list
+      setAttendingClients(prev => prev.filter(c => c.client_id !== client.client_id))
+      setExpandedClient(null)
+    }
+
+    setCompletingClient(null)
   }
 
   // Mock workout data - will be replaced with real data from database
@@ -77,11 +100,15 @@ export default function AttendingPage() {
           <Text fontSize="md" fontWeight="normal" color="fg.muted">
             No clients currently attending
           </Text>
+          <Text fontSize="sm" fontWeight="normal" color="fg.muted" mt="2">
+            Start a session from the home page
+          </Text>
         </Box>
       ) : (
         <VStack align="stretch" gap="3" px="4" mt="6">
           {attendingClients.map((client) => {
             const isExpanded = expandedClient === client.client_id
+            const isCompleting = completingClient === client.client_id
 
             return (
               <Box
@@ -116,8 +143,8 @@ export default function AttendingPage() {
 
                 {/* Expanded Workout Details */}
                 {isExpanded && (
-                  <VStack align="stretch" gap="2" px="4" pb="4" borderTopWidth="1px" borderColor="border">
-                  <Text fontSize="md" fontWeight="medium" color="fg" mt="3">
+                  <VStack align="stretch" gap="3" px="4" pb="4" borderTopWidth="1px" borderColor="border">
+                    <Text fontSize="md" fontight="medium" color="fg" mt="3">
                       {mockWorkout.session_title}
                     </Text>
 
@@ -135,6 +162,29 @@ export default function AttendingPage() {
                     <Text fontSize="xs" fontWeight="normal" color="fg.muted" mt="2">
                       Started at {client.workout_started_at ? new Date(client.workout_started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Unknown'}
                     </Text>
+
+                    {/* Mark as Completed Button */}
+                    <Button
+                     w="full"
+                      bg="button.primary.bg"
+                      color="button.primary.text"
+                      _hover={{ bg: "button.primary.hover" }}
+                      borderRadius="base"
+                      h="12"
+                      fontSize="md"
+                      fontWeight="medium"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleMarkAttended(client)
+                      }}
+                      isDisabled={isCompleting}
+                      mt="2"
+                    >
+                      <HStack gap="2">
+                        <Check size={20} />
+                        <Text>{isCompleting ? 'Completing...' : 'Mark as Completed'}</Text>
+                      </HStack>
+                    </Button>
                   </VStack>
                 )}
               </Box>

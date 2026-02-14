@@ -1,7 +1,7 @@
 "use client"
 
-import { Box, Heading, Text, VStack, HStack, Badge } from "@chakra-ui/react"
-import { ArrowLeft, MoreVertical, ChevronRight, TrendingDown } from "lucide-react"
+import { Box, Heading, Text, VStack, HStack, Badge, Button } from "@chakra-ui/react"
+import { ArrowLeft, Check, X as XIcon, Calendar } from "lucide-react"
 import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -10,22 +10,36 @@ import BottomNav from "@/components/layout/BottomNav"
 export default function ClientDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const clientId = params.id as string
   const supabase = createClient()
+
   const [loading, setLoading] = useState(true)
   const [client, setClient] = useState<any>(null)
+  const [twoWeekAttendance, setTwoWeekAttendance] = useState<any[]>([])
 
   useEffect(() => {
-    if (params.id) {
-      loadClient(params.id as string)
-    }
-  }, [params.id])
+    loadClientData()
+  }, [clientId])
 
-  const loadClient = async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/auth/login')
-      return
+  const loadClientData = async () => {
+    // Get client info
+    const { data: clientData } = await supabase
+      .from('clients')
+      .select('*, tier:tiers(*)')
+      .eq('id', clientId)
+      .single()
+
+    if (clientData) {
+      setClient(clientData)
+      await loadTwoWeekAttendance(clientData)
     }
+
+    setLoading(false)
+  }
+
+  const loadTwoWeekAttendance = async (clientData: any) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
     const { data: trainer } = await supabase
       .from('users')
@@ -35,24 +49,72 @@ export default function ClientDetailPage() {
 
     if (!trainer) return
 
-    const { data, error } = await supabase
-      .from('clients')
-      .select(`
-        *,
-        tier:tiers(*)
-      `)
-      .eq('id', id)
-      .eq('trainer_id', trainer.id)
-      .single()
+    // Get dates for 2 weeks (past week + current week)
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay()) // Sunday of current week
+    
+    const startDate = new Date(startOfWeek)
+    startDate.setDate(startOfWeek.getDate() - 7) // Go back one more week
 
-    if (error) {
-      console.error('Error loading client:', error)
-      router.push('/clients')
-      return
+    const endDate = new Date(startOfWeek)
+    endDate.setDate(startOfWeek.getDate() + 6) // Saturday of current week
+
+    const startDateStr = startDate.toISOString().split('T')[0]
+    const endDateStr = endDate.toISOString().split('T')[0]
+
+    // Get attendance records for the 2 weeks
+    const { data: attendanceRecords } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('trainer_id', trainer.id)
+      .gte('scheduled_date', startDateStr)
+      .lte('scheduled_date', endDateStr)
+
+    // Generate all scheduled dates for the 2 weeks
+    const scheduledDates: any[] = []
+    const currentDate = new Date(startDate)
+
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0]
+      const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
+
+      let isScheduled = false
+
+      if (clientData.schedule_set === 'sunday' && ['sun', 'tue', 'thu'].includes(dayOfWeek)) {
+        isScheduled = true
+      } else if (clientData.schedule_set === 'saturday' && ['sat', 'mon', 'wed'].includes(dayOfWeek)) {
+        isScheduled = true
+      } else if (clientData.schedule_set === 'custom' && clientData.custom_days?.includes(dayOfWeek)) {
+        isScheduled = true
+      }
+
+      if (isScheduled) {
+        const sessionTime = clientData.session_times?.[dayOfWeek] || '09:00'
+        const normalizedSessionTime = sessionTime.length === 5 ? `${sessionTime}:00` : sessionTime
+
+        const attendance = attendanceRecords?.find(a => {
+          const normalizedDbTime = a.scheduled_time.length === 5 ? `${a.scheduled_time}:00` : a.scheduled_time
+          return a.scheduled_date === dateStr && normalizedDbTime === normalizedSessionTime
+        })
+
+        scheduledDates.push({
+          date: dateStr,
+          dayOfWeek,
+          dayName: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
+          dayNumber: currentDate.getDate(),
+          monthName: currentDate.toLocaleDateString('en-US', { month: 'short' }),
+          scheduled_time: sessionTime,
+          status: attendance?.status || 'scheduled',
+          isPast: currentDate < new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+        })
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1)
     }
 
-    setClient(data)
-    setLoading(false)
+    setTwoWeekAttendance(scheduledDates)
   }
 
   if (loading) {
@@ -64,57 +126,31 @@ export default function ClientDetailPage() {
   }
 
   if (!client) {
-    return null
+    return (
+      <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center">
+        <Text fontSize="lg" color="fg.muted">Client not found</Text>
+      </Box>
+    )
   }
 
-  // Mock data for demonstration
-  const progressStats = {
-    height: { value: 175, unit: 'cm', change: null },
-    weight: { value: 72.5, unit: 'kg', change: 2.3, isPositive: false },
-    bodyFat: { value: 18.2, unit: '%', change: 1.5, isPositive: false },
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'attended':
+        return 'success.solid'
+      case 'missed':
+        return 'danger.solid'
+      case 'attending':
+        return 'warning.solid'
+      case 'scheduled':
+        return 'neutral.200'
+      default:
+        return 'neutral.200'
+    }
   }
 
-  const lastRecorded = 'Feb 8, 2026'
-  
-  // Mock attendance for last 2 weeks (14 days)
-  const attendance = [
-    { status: 'attended' },
-    { status: 'attended' },
-    { status: 'missed' },
-    { status: 'missed' },
-    { status: 'attended' },
-    { status: 'attended' },
-    { status: 'scheduled' },
-    { status: 'scheduled' },
-    { status: 'attended' },
-    { status: 'scheduled' },
-    { status: 'missed' },
-    { status: 'attended' },
-    { status: 'scheduled' },
-    { status: 'scheduled' },
-  ]
-
-  const workoutSessions = [
-    {
-      title: 'Session 1: Upper Body Strength',
-      exerciseCount: 4,
-      exercises: [
-        { name: 'Bench Press', sets: 4, reps: 10 },
-        { name: 'Pull-ups', sets: 3, reps: 8 },
-        { name: 'Shoulder Press', sets: 3, reps: 12 },
-      ],
-      moreCount: 1,
-    },
-    {
-      title: 'Session 2: Lower Body Power',
-      exerciseCount: 4,
-      exercises: [
-        { name: 'Squats', sets: 4, reps: 8 },
-        { name: 'Deadlifts', sets: 3, reps: 6 },
-      ],
-      moreCount: 2,
-    },
-  ]
+  const totalScheduled = twoWeekAttendance.length
+  const attendedCount = twoWeekAttendance.filter(d => d.status === 'attended').length
+  const attendanceRate = totalScheduled > 0 ? Math.round((attendedCount / totalScheduled) * 100) : 0
 
   return (
     <Box minH="100vh" bg="bg" pb="32">
@@ -129,240 +165,158 @@ export default function ClientDetailPage() {
         borderBottomWidth="1px" 
         borderColor="border"
       >
-        <HStack justify="space-between">
-          <HStack gap="3" cursor="pointer" onClick={() => router.push('/clients')}>
-            <ArrowLeft size={20} color="#737373" />
-            <Text fontSize="md" fontWeight="normal" color="fg.muted">
-              Back to Clients
-            </Text>
-          </HStack>
-          <Box cursor="pointer">
-            <MoreVertical size={20} color="#737373" />
-          </Box>
+        <HStack gap="3" cursor="pointer" onClick={() => router.push('/clients')}>
+          <ArrowLeft size={20} color="#737373" />
+          <Text fontSize="md" fontWeight="normal" color="fg.muted">
+            Back to Clients
+          </Text>
         </HStack>
 
-        <HStack justify="space-between" align="start">
-          <VStack align="start" gap="2">
-            <Heading fontFamily="heading" fontSize="2xl" fontWeight="medium" color="fg">
-              {client.name}
-            </Heading>
-            <Text fontSize="sm" fontWeight="normal" color="fg.muted">
-              {client.training_programs.join(' • ')}
-            </Text>
-            <HStack gap="2">
-              <Badge
-                bg="tag.strength.bg"
-                color="tag.strength.text"
-                borderColor="tag.strength.border"
-                borderWidth="1px"
-                px="2"
-                py="0.5"
-                fontSize="xs"
-                fontWeight="normal"
-                borderRadius="base"
-              >
-                {client.schedule_set === 'sunday' ? 'Sun Set' : client.schedule_set === 'saturday' ? 'Sat Set' : 'Custom'}
-              </Badge>
-              <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-                Last session: 2 days ago
-              </Text>
-            </HStack>
-          </VStack>
+        <VStack align="start" gap="2">
+          <Heading fontFamily="heading" fontSize="2xl" fontWeight="medium" color="fg">
+            {client.name}
+          </Heading>
+          <Text fontSize="sm" fontWeight="normal" color="fg.muted">
+            {client.phone}
+          </Text>
+          {client.tier && (
+            <Badge 
+              bg="primary.muted" 
+              color="primary.fg" 
+              px="3" 
+              py="1" 
+              borderRadius="base"
+              fontSize="sm"
+            >
+              {client.tier.name} - MVR {client.tier.amount}
+            </Badge>
+          )}
+        </VStack>
+      </VStack>
+
+      {/* Stats */}
+      <VStack align="stretch" gap="4" px="4" mt="6">
+        <HStack gap="3">
+          <Box flex="1" bg="bg.surface" borderRadius="base" borderWidth="1px" borderColor="border" p="4">
+            <Text fontSize="xs" color="fg.muted" mb="1">Attendance Rate</Text>
+            <Text fontSize="2xl" fontWeight="medium" color="fg">{attendanceRate}%</Text>
+          </Box>
+          <Box flex="1" bg="bg.surface" borderRadius="base" borderWidth="1px" borderColor="border" p="4">
+            <Text fontSize="xs" color="fg.muted" mb="1">Sessions</Text>
+            <Text fontSize="2xl" fontWeight="medium" color="fg">{attendedCount}/{totalScheduled}</Text>
+          </Box>
         </HStack>
       </VStack>
 
-      {/* Progress Stats */}
-      <Box px="4" mt="6">
-        <Heading fontSize="lg" fontWeight="medium" color="fg" mb="3">
-          Progress Stats
-        </Heading>
-        
-        <HStack gap="3" overflowX="auto">
-          <Box
-          bg="bg.surface"
-            borderRadius="base"
-            borderWidth="1px"
-            borderColor="border"
-            p="4"
-            minW="28"
+      {/* 2-Week Attendance */}
+      <VStack align="stretch" gap="3" px="4" mt="6">
+        <HStack justify="space-between">
+          <Heading fontSize="lg" fontWeight="medium" color="fg">
+            Recent Attendance
+          </Heading>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/clients/${clientId}/attendance`)}
+            color="primary.fg"
           >
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted" mb="2">
-              Height
-            </Text>
-            <Text fontSize="2xl" fontWeight="medium" color="fg">
-              {progressStats.height.value}
-            </Text>
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-              {progressStats.height.unit}
-            </Text>
-          </Box>
-
-          <Box
-            bg="bg.surface"
-            borderRadius="base"
-            borderWidth="1px"
-            borderColor="border"
-            p="4"
-            minW="28"
-          >
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted" mb="2">
-              Weight
-            </Text>
-            <HStack gap="2" align="baseline">
-              <Text fontSize="2xl" fontWeight="medium" color="fg">
-                {progressStats.weight.value}
-              </Text>
-              {progressStats.weight.change && (
-                <HStack gap="1">
-                  <TrendingDown size={14} color="#22c55e" />
-                  <Text fontSize="xs" fontWeight="normal" color="success.fg">
-                    {progressStats.weight.change}
-                  </Text>
-                </HStack>
-              )}
-            </HStack>
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-              {progressStats.weight.unit}
-            </Text>
-          </Box>
-
-          <Box
-            bg="bg.surface"
-            borderRadius="base"
-            borderWidth="1px"
-            borderColor="border"
-            p="4"
-            minW="28"
-          >
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted" mb="2">
-              Body Fat
-            </Text>
-            <HStack gap="2" align="baseline">
-              <Text fontSize="2xl" fontWeight="medium" color="fg">
-                {progressStats.bodyFat.value}
-              </Text>
-              {progressStats.bodyFat.change && (
-                <HStack gap="1">
-                  <TrendingDown size={14} color="#22c55e" />
-                  <Text fontSize="xs" fontWeight="normal" color="success.fg">
-                    {progressStats.bodyFat.change}
-                  </Text>
-                </HStack>
-              )}
-            </HStack>
-            <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-              {progressStats.bodyFat.unit}
-            </Text>
-          </Box>
+            View Full
+          </Button>
         </HStack>
 
-        <Text fontSize="xs" fontWeight="normal" color="fg.muted" mt="3" textAlign="center">
-          Last recorded: {lastRecorded}
-        </Text>
-      </Box>
-
-      {/* Last 2 Weeks Attendance */}
-      <Box px="4" mt="6">
-        <Box
-          bg="bg.surface"
-          borderRadius="base"
-          borderWidth="1px"
-          borderColor="border"
-          p="4"
-        >
-          <HStack justify="space-between" mb="4">
-            <Text fontSize="md" fontWeight="medium" color="fg">
-              Last 2 Weeks Attendance
-            </Text>
-            <Text fontSize="sm" fontWeight="normal" color="primary.fg" cursor="pointer">
-              View Full
-            </Text>
-          </HStack>
-
-          <VStack align="stretch" gap="3">
-            <HStack gap="2" justify="center">
-              {attendance.map((day, index) => (
+        {twoWeekAttendance.length === 0 ? (
+          <Text fontSize="sm" color="fg.muted">No scheduled sessions in the past 2 weeks</Text>
+        ) : (
+          <HStack gap="2" overflowX="auto" pb="2">
+            {twoWeekAttendance.map((day, index) => (
+              <VStack
+                key={index}
+                minW="60px"
+                bg="bg.surface"
+                borderRadius="base"
+                borderWidth="1px"
+                borderColor="border"
+                p="2"
+                gap="1"
+                opacity={day.isPast && day.status === 'scheduled' ? 0.5 : 1}
+              >
+                <Text fontSize="xs" color="fg.muted">
+                  {day.dayName}
+                </Text>
+                <Text fontSize="lg" fontWeight="medium" color="fg">
+                  {day.dayNumber}
+                </Text>
+                <Text fontSize="xs" color="fg.muted">
+                  {day.monthName}
+                </Text>
+                
                 <Box
-                  key={index}
-                  w="6"
-                  h="6"
+                  mt="1"
+                  bg={getStatusColor(day.status)}
                   borderRadius="full"
-                  bg={
-                    day.status === 'attended' ? 'success.solid' :
-                    day.status === 'missed' ? 'danger.solid' :
-                    'neutral.200'
-                  }
-                />
-              ))}
-            </HStack>
+                  p="1.5"
+                >
+                  {day.status === 'attended' && <Check size={12} color="white" />}
+                  {day.status === 'missed' && <XIcon size={12} color="white" />}
+                  {day.status === 'scheduled' && <Calendar size={12} color="#737373" />}
+                </Box>
+              </VStack>
+            ))}
+          </HStack>
+        )}
+      </VStack>
 
-            <HStack gap="4" justify="center">
-              <HStack gap="2">
-                <Box w="3" h="3" borderRadius="full" bg="success.solid" />
-                <Text fontSize="xs" fontWeight="normal" color="fg">
-                  Attended
-                </Text>
-              </HStack>
-              <HStack gap="2">
-                <Box w="3" h="3" borderRadius="full" bg="danger.solid" />
-                <Text fontSize="xs" fontWeight="normal" color="fg">
-                  Scheduled
-                </Text>
-              </HStack>
-            </HStack>
-          </VStack>
-        </Box>
-      </Box>
-
-      {/* Workout Routine */}
-      <Box px="4" mt="6" mb="4">
-        <Heading fontSize="lg" fontWeight="medium" color="fg" mb="3">
-          Workout Routine
+      {/* Training Programs */}
+      <VStack align="stretch" gap="3" px="4" mt="6">
+        <Heading fontSize="lg" fontWeight="medium" color="fg">
+          Training Programs
         </Heading>
-
-        <VStack align="stretch" gap="3">
-          {workoutSessions.map((session, index) => (
-            <Box
+        <HStack gap="2" flexWrap="wrap">
+          {client.training_programs.map((program: string, index: number) => (
+            <Badge 
               key={index}
-              bg="bg.surface"
+              bg="bg.subtle" 
+              color="fg" 
+              px="3" 
+              py="2" 
               borderRadius="base"
+              fontSize="sm"
               borderWidth="1px"
               borderColor="border"
-              p="4"
             >
-              <HStack justify="space-between" mb="3" cursor="pointer">
-                <VStack align="start" gap="1">
-                  <Text fontSize="md" fontWeight="medium" color="fg">
-                    {session.title}
-                  </Text>
-                  <Text fontSize="xs" fontWeight="normal" color="fg.muted">
-                    {session.exerciseCount} exercises
-                  </Text>
-                </VStack>
-                <ChevronRight size={20} color="#737373" />
-              </HStack>
-
-              <VStack align="stretch" gap="2">
-                {session.exercises.map((exercise, idx) => (
-                  <HStack key={idx} justify="space-between">
-                    <Text fontSize="sm" fontWeight="normal" color="fg">
-                      {exercise.name}
-                    </Text>
-                    <Text fontSize="sm" fontWeight="normal" color="fg.muted">
-                      {exercise.sets} × {exercise.reps}
-                    </Text>
-                  </HStack>
-                ))}
-                {session.moreCount > 0 && (
-                  <Text fontSize="sm" fontWeight="normal" color="fg.muted">
-                    +{session.moreCount} more exercie{session.moreCount > 1 ? 's' : ''}
-                  </Text>
-                )}
-              </VStack>
-            </Box>
+              {program}
+            </Badge>
           ))}
-        </VStack>
-      </Box>
+        </HStack>
+      </VStack>
+
+      {/* Schedule Info */}
+      <VStack align="stretch" gap="3" px="4" mt="6">
+        <Heading fontSize="lg" fontWeight="medium" color="fg">
+          Schedule
+        </Heading>
+        <Box bg="bg.surface" borderRadius="base" borderWidth="1px" borderColor="border" p="4">
+          <VStack align="start" gap="2">
+            <Text fontSize="sm" fontWeight="normal" color="fg">
+              <Text as="span" fontWeight="medium">Schedule Set:</Text>{' '}
+              {client.schedule_set === 'sunday' && 'Sun Set (Sun, Tue, Thu)'}
+              {client.schedule_set === 'saturday' && 'Sat Set (Sat, Mon, Wed)'}
+              {client.schedule_set === 'custom' && `Custom (${client.custom_days?.join(', ')})`}
+            </Text>
+            
+            {client.session_times && (
+              <VStack align="start" gap="1" mt="2">
+                <Text fontSize="xs" fontWeight="medium" color="fg.muted">Session Times:</Text>
+                {Object.entries(client.session_times).map(([day, time]: [string, any]) => (
+                  <Text key={day} fontSize="sm" color="fg">
+                    {day.charAt(0).toUpperCase() + day.slice(1)}: {time}
+                  </Text>
+                ))}
+              </VStack>
+            )}
+          </VStack>
+        </Box>
+      </VStack>
 
       <BottomNav />
     </Box>
