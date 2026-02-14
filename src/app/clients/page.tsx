@@ -3,6 +3,7 @@
 import { Box, Heading, Text, VStack, HStack, Input, Badge } from "@chakra-ui/react"
 import { Search, MoreVertical } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { getClients } from "@/actions/clients"
 import BottomNav from "@/components/layout/BottomNav"
 
@@ -17,6 +18,7 @@ type Client = {
 }
 
 export default function ClientsPage() {
+  const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,7 +44,6 @@ export default function ClientsPage() {
   const filterClients = () => {
     let filtered = clients
 
-    // Filter by tab
     if (activeTab === 'sunday') {
       filtered = filtered.filter(c => c.schedule_set === 'sunday')
     } else if (activeTab === 'saturday') {
@@ -51,7 +52,6 @@ export default function ClientsPage() {
       filtered = filtered.filter(c => c.schedule_set === 'custom')
     }
 
-    // Filter by search
     if (searchQuery) {
       filtered = filtered.filter(c => 
         c.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -69,15 +69,19 @@ export default function ClientsPage() {
     )
   }
 
+  const getScheduleLabel = (scheduleSet: string) => {
+    if (scheduleSet === 'sunday') return 'Sun Set'
+    if (scheduleSet === 'saturday') return 'Sat Set'
+    return 'Custom'
+  }
+
   return (
     <Box minH="100vh" bg="bg" pb="32">
-      {/* Header */}
       <VStack align="stretch" gap="4" bg="bg.surface" px="4" pt="6" pb="4" borderBottomWidth="1px" borderColor="border">
         <Heading fontFamily="heading" fontSize="2xl" fontWeight="medium" color="fg">
           Clients
         </Heading>
 
-        {/* Search */}
         <HStack bg="bg" borderRadius="base" borderWidth="1px" borderColor="border" px="3" py="2">
           <Search size={20} color="#737373" />
           <Input
@@ -90,7 +94,6 @@ export default function ClientsPage() {
           />
         </HStack>
 
-        {/* Tabs */}
         <HStack gap="2" overflowX="auto">
           <Box
             px="4"
@@ -141,7 +144,6 @@ export default function ClientsPage() {
         </HStack>
       </VStack>
 
-      {/* Client List */}
       <VStack align="stretch" gap="3" px="4" mt="4">
         {filteredClients.length === 0 ? (
           <Box py="12" textAlign="center">
@@ -154,10 +156,12 @@ export default function ClientsPage() {
             <Box
               key={client.id}
               bg="bg.surface"
-              borderRadius="md"
+              borderRadius="base"
               borderWidth="1px"
               borderColor="border"
               p="4"
+              cursor="pointer"
+              onClick={() => router.push(`/clients/${client.id}`)}
             >
               <HStack justify="space-between" mb="2">
                 <VStack align="start" gap="1">
@@ -168,13 +172,18 @@ export default function ClientsPage() {
                     {client.training_programs.join(' • ')}
                   </Text>
                 </VStack>
-                <Box cursor="pointer">
+                <Box 
+                  cursor="pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                  }}
+                >
                   <MoreVertical size={20} color="#737373" />
                 </Box>
               </HStack>
               
               <HStack gap="2" mt="2">
-                <Badge
+              <Badge
                   bg="tag.strength.bg"
                   color="tag.strength.text"
                   borderColor="tag.strength.border"
@@ -185,7 +194,7 @@ export default function ClientsPage() {
                   fontWeight="normal"
                   borderRadius="base"
                 >
-                {client.schedule_set === 'sunday' ? 'Sun Set' : client.schedule_set === 'saturday' ? 'Sat Set' : 'Custom'}
+                  {getScheduleLabel(client.schedule_set)}
                 </Badge>
                 {client.tier && (
                   <Badge

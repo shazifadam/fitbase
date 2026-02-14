@@ -11,7 +11,7 @@ import {
   Heading,
 } from "@chakra-ui/react"
 import { X, Check } from "lucide-react"
-import { createClientAction } from "@/actions/clients"
+import { createClientAction, getClients } from "@/actions/clients"
 import { getTiers, createDefaultTiers } from "@/actions/tiers"
 import { useRouter } from "next/navigation"
 
@@ -45,8 +45,8 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState<any[]>([])
+  const [existingClients, setExistingClients] = useState<any[]>([])
 
-  // Form data
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
   const [tierId, setTierId] = useState('')
@@ -59,13 +59,12 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
 
   useEffect(() => {
     loadTiers()
+    loadExistingClients()
   }, [])
 
   const loadTiers = async () => {
-    // Try to get existing tiers
     let result = await getTiers()
     
-    // If no tiers exist, create default ones
     if (!result.data || result.data.length === 0) {
       await createDefaultTiers()
       result = await getTiers()
@@ -76,17 +75,68 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
     }
   }
 
+  const loadExistingClients = async () => {
+    const result = await getClients(false)
+    if (result.data) {
+      setExistingClients(result.data)
+    }
+  }
+
+  const validatePhone = (phoneNumber: string): boolean => {
+    // Remove all non-digit characters
+    const digitsOnly = phoneNumber.replace(/\D/g, '')
+    
+    // Must be exactly 7 digits
+    if (digitsOnly.length !== 7) {
+      return false
+    }
+    
+    // First digit should be 7, 9, or 3 (common Maldives mobile prefixes)
+    const firstDigit = digitsOnly[0]
+    if (!['7', '9', '3'].includes(firstDigit)) {
+      return false
+    }
+    
+    return true
+  }
+
+  const formatPhone = (value: string): string => {
+    // Only allow digits
+    const digitsOnly = value.replace(/\D/g, '')
+    // Limit to 7 digits
+    return digitsOnly.slice(0, 7)
+  }
+
+  const checkPhoneExists = (phoneNumber: string): boolean => {
+    const fullPhone = `+960${phoneNumber}`
+    return existingClients.some(client => client.phone === fullPhone)
+  }
+
   const handlePhoneSubmit = async () => {
-    if (!phone) {
+    const formattedPhone = formatPhone(phone)
+    
+    if (!formattedPhone) {
       setError('Phone number is required')
       return
     }
+
+    if (!validatePhone(formattedPhone)) {
+      setError('Please enter a valid 7-digit Maldives number (starting with 7, 9, or 3)')
+      return
+    }
+
+    // Check if phone already exists
+    if (checkPhoneExists(formattedPhone)) {
+      setError('A client with this phone number already exists')
+      return
+    }
+
+    setPhone(formattedPhone)
     setStep('details')
     setError('')
   }
 
   const handleSubmit = async () => {
-    // Validation
     if (!name || !phone || trainingPrograms.length === 0) {
       setError('Please fill in all required fields')
       return
@@ -100,7 +150,6 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
     setLoading(true)
     setError('')
 
-    // Prepare session times
     let sessionTimes: Record<string, string> = {}
     
     if (scheduleSet === 'sunday') {
@@ -116,7 +165,6 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
         wed: sameTimeAllDays ? defaultTime : (dayTimes.wed || defaultTime),
       }
     } else {
-      // Custom days
       customDays.forEach(day => {
         sessionTimes[day] = sameTimeAllDays ? defaultTime : (dayTimes[day] || defaultTime)
       })
@@ -124,8 +172,8 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
 
     const result = await createClientAction({
       name,
-      phone,
-      tier_id: tierId || null, // Allow null if no tier selected
+      phone: `+960${phone}`,
+      tier_id: tierId || null,
       training_programs: trainingPrograms,
       schedule_set: scheduleSet,
       custom_days: scheduleSet === 'custom' ? customDays : [],
@@ -179,7 +227,6 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
         flexDirection="column"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header - Fixed */}
         <HStack justify="space-between" p="4" borderBottomWidth="1px" borderColor="border" flexShrink="0">
           <Heading fontSize="xl" fontWeight="medium" color="fg">
             {step === 'phone' ? 'Add Client' : 'Client Details'}
@@ -189,7 +236,6 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
           </Box>
         </HStack>
 
-        {/* Scrollable Content */}
         <VStack align="stretch" gap="4" p="4" overflowY="auto" flex="1">
           {error && (
             <Box bg="danger.subtle" borderWidth="1px" borderColor="danger.muted" borderRadius="base" p="3">
@@ -201,22 +247,48 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
             <>
               <VStack align="stretch" gap="2">
                 <Text fontSize="sm" fontWeight="medium" color="fg">
-                  Phone Number
+                  Phone Number *
                 </Text>
-                <Input
-                  type="tel"
-                  placeholder="Enter phone number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  bg="input.bg"
-                  borderColor="input.border"
-                  borderRadius="base"
-                  _focus={{ borderColor: "input.focusBorder", outline: "none" }}
-                  px="4"
-                  h="12"
-                  fontSize="md"
-                  fontWeight="normal"
-                />
+                <HStack gap="0">
+                  <Box
+                    bg="bg.muted"
+                    borderWidth="1px"
+                    borderColor="border"
+                    borderRightWidth="0"
+                    borderTopLeftRadius="base"
+                    borderBottomLeftRadius="base"
+                    px="4"
+                    h="12"
+                    display="flex"
+                    alignItems="center"
+                  >
+                    <Text fontSize="md" fontWeight="normal" color="fg.muted">
+                      +960
+                    </Text>
+                  </Box>
+                  <Input
+                    type="tel"
+                    placeholder="7XXXXXX"
+                    value={phone}
+                    onChange={(e) => setPhone(formatPhone(e.target.value))}
+                    bg="input.bg"
+                    borderColor="input.border"
+                    borderTopLeftRadius="0"
+                    borderBottomLeftRadius="0"
+                    borderTopRightRadius="base"
+                    borderBottomRightRadius="base"
+                    _focus={{ borderColor: "input.focusBorder", outline: "none" }}
+                    px="4"
+                    h="12"
+                    fontSize="md"
+                    fontWeight="normal"
+                    flex="1"
+                    maxLength={7}
+                  />
+                </HStack>
+                <Text fontSize="xs" fontWeight="normal" color="fg.muted">
+                  Enter 7-digit Maldives mobile number
+                </Text>
               </VStack>
             </>
           ) : (
@@ -438,7 +510,6 @@ export default function AddClientForm({ onClose }: AddClientFormProps) {
           )}
         </VStack>
 
-        {/* Button - Fixed to Bottom */}
         <Box p="4" borderTopWidth="1px" borderColor="border" bg="bg.surface" flexShrink="0">
           <Button
             w="full"

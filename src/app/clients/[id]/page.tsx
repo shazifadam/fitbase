@@ -2,28 +2,23 @@
 
 import { Box, Heading, Text, VStack, HStack, Badge } from "@chakra-ui/react"
 import { ArrowLeft, MoreVertical, ChevronRight, TrendingDown } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import BottomNav from "@/components/layout/BottomNav"
 
-type ClientDetailProps = {
-  params: Promise<{ id: string }>
-}
-
-export default function ClientDetailPage({ params }: ClientDetailProps) {
+export default function ClientDetailPage() {
   const router = useRouter()
+  const params = useParams()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [client, setClient] = useState<any>(null)
-  const [clientId, setClientId] = useState<string>('')
 
   useEffect(() => {
-    params.then(({ id }) => {
-      setClientId(id)
-      loadClient(id)
-    })
-  }, [params])
+    if (params.id) {
+      loadClient(params.id as string)
+    }
+  }, [params.id])
 
   const loadClient = async (id: string) => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -178,14 +173,14 @@ export default function ClientDetailPage({ params }: ClientDetailProps) {
 
       {/* Progress Stats */}
       <Box px="4" mt="6">
-        <Heading fontSize="lg" fontWeight="medium" color="fg" mb=">
+        <Heading fontSize="lg" fontWeight="medium" color="fg" mb="3">
           Progress Stats
         </Heading>
         
         <HStack gap="3" overflowX="auto">
           <Box
-            bg="bg.surface"
-            borderRadius="md"
+          bg="bg.surface"
+            borderRadius="base"
             borderWidth="1px"
             borderColor="border"
             p="4"
@@ -204,7 +199,7 @@ export default function ClientDetailPage({ params }: ClientDetailProps) {
 
           <Box
             bg="bg.surface"
-            borderRadius="md"
+            borderRadius="base"
             borderWidth="1px"
             borderColor="border"
             p="4"
@@ -233,7 +228,7 @@ export default function ClientDetailPage({ params }: ClientDetailProps) {
 
           <Box
             bg="bg.surface"
-            borderRadius="md"
+            borderRadius="base"
             borderWidth="1px"
             borderColor="border"
             p="4"
@@ -270,7 +265,7 @@ export default function ClientDetailPage({ params }: ClientDetailProps) {
       <Box px="4" mt="6">
         <Box
           bg="bg.surface"
-          borderRadius="md"
+          borderRadius="base"
           borderWidth="1px"
           borderColor="border"
           p="4"
@@ -330,7 +325,7 @@ export default function ClientDetailPage({ params }: ClientDetailProps) {
             <Box
               key={index}
               bg="bg.surface"
-              borderRadius="md"
+              borderRadius="base"
               borderWidth="1px"
               borderColor="border"
               p="4"
@@ -359,8 +354,8 @@ export default function ClientDetailPage({ params }: ClientDetailProps) {
                   </HStack>
                 ))}
                 {session.moreCount > 0 && (
-                  Text fontSize="sm" fontWeight="normal" color="fg.muted">
-                    +{session.moreCount} more exercise{session.moreCount > 1 ? 's' : ''}
+                  <Text fontSize="sm" fontWeight="normal" color="fg.muted">
+                    +{session.moreCount} more exercie{session.moreCount > 1 ? 's' : ''}
                   </Text>
                 )}
               </VStack>
