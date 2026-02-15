@@ -1,12 +1,12 @@
 "use client"
 
-import { Box, Heading, Text, VStack, HStack, Button } from "@chakra-ui/react"
+import { Box, Heading, Text, VStack, HStack, Button, Input } from "@chakra-ui/react"
 import { ArrowLeft, ChevronDown, ChevronUp, Check } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import BottomNav from "@/components/layout/BottomNav"
-import { getAttendingClients, markAttendance } from "@/actions/attendance"
+import { getAttendingClients, markAttendance, updateExerciseWeight } from "@/actions/attendance"
 
 export default function AttendingPage() {
   const router = useRouter()
@@ -15,6 +15,7 @@ export default function AttendingPage() {
   const [attendingClients, setAttendingClients] = useState<any[]>([])
   const [expandedClient, setExpandedClient] = useState<string | null>(null)
   const [completingClient, setCompletingClient] = useState<string | null>(null)
+  const [weights, setWeights] = useState<{[key: string]: {[exerciseName: string]: string}}>({})
 
   useEffect(() => {
     loadAttendingClients()
@@ -24,8 +25,36 @@ export default function AttendingPage() {
     const result = await getAttendingClients()
     if (result.data) {
       setAttendingClients(result.data)
+      
+      // Initialize weights from current_weights
+      const initialWeights: {[key: string]: {[exerciseName: string]: string}} = {}
+      result.data.forEach((client: any) => {
+        initialWeights[client.client_id] = client.current_weights || {}
+      })
+      setWeights(initialWeights)
     }
     setLoading(false)
+  }
+
+  const handleWeightChange = async (clientId: string, attendanceId: string, exerciseName: string, value: string) => {
+    // Update local state
+    setWeights(prev => ({
+      ...prev,
+      [clientId]: {
+        ...prev[clientId],
+        [exerciseName]: value
+      }
+    }))
+
+    // Debounce update to database
+    const numericValue = parseFloat(value)
+    if (!isNaN(numericValue) && numericValue > 0) {
+      await updateExerciseWeight({
+        attendance_id: attendanceId,
+        exercise_name: exerciseName,
+        weight: numericValue,
+      })
+    }
   }
 
   const handleMarkAttended = async (client: any) => {
@@ -96,6 +125,7 @@ export default function AttendingPage() {
             const isExpanded = expandedClient === client.client_id
             const isCompleting = completingClient === client.client_id
             const workout = client.workout
+            const clientWeights = weights[client.client_id] || {}
 
             return (
               <Box
@@ -140,14 +170,46 @@ export default function AttendingPage() {
 
                         {workout.exercises && Array.isArray(workout.exercises) && workout.exercises.length > 0 && (
                           <VStack align="stretch" gap="2" mt="2">
+                            {/* Header */}
+                            <HStack justify="space-between" py="1" borderBottomWidth="1px" borderColor="border">
+                              <Text fontSize="xs" fontWeight="medium" color="fg.muted" flex="2">
+                                Exercise
+                              </Text>
+                              <Text fontSize="xs" fontWeight="medium" color="fg.muted" w="60px" textAlign="center">
+                                Sets × Reps
+                              </Text>
+                              <Text fontSize="xs" fontWeight="medium" color="fg.muted" w="80px" textAlign="center">
+                                Weight (kg)
+                              </Text>
+                            </HStack>
+
+                            {/* Exercises */}
                             {workout.exercises.map((exercise: any, index: number) => (
-                              <HStack key={index} justify="space-between" py="2">
-                                <Text fontSize="sm" fontWeight="normal" color="fg">
+                              <HStack key={index} justify="space-between" py="2" align="center">
+                                <Text fontSize="sm" fontWeight="normal" color="fg" flex="2">
                                   {exercise.name}
                                 </Text>
-                                <Text fontSize="sm" fontWeight="normal" color="fg.muted">
+                                <Text fontSize="sm" fontWeight="normal" color="fg.muted" w="60px" textAlign="center">
                                   {exercise.sets} × {exercise.reps}
                                 </Text>
+                                <Input
+                                  type="number"
+                                  w="80px"
+                                  h="8"
+                                  textAlign="center"
+                                  fontSize="sm"
+                                  value={clientWeights[exercise.name] || ''}
+                                  onChange={(e) => handleWeightChange(
+                                    client.client_id,
+                                    client.attendance_id,
+                                    exercise.name,
+                                    e.target.value
+                                  )}
+                                  placeholder="0"
+                                  bg="input.bg"
+                                  borderColor="input.border"
+                                  borderRadius="base"
+                                />
                               </HStack>
                             ))}
                           </VStack>

@@ -74,6 +74,41 @@ export async function markAttendance(data: {
   return { success: true }
 }
 
+export async function updateExerciseWeight(data: {
+  attendance_id: string
+  exercise_name: string
+  weight: number
+}) {
+  const supabase = await createSupabaseClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Get current weights
+  const { data: attendance } = await supabase
+    .from('attendance')
+    .select('current_weights')
+    .eq('id', data.attendance_id)
+    .single()
+
+  if (!attendance) return { error: 'Attendance record not found' }
+
+  const currentWeights = attendance.current_weights || {}
+  currentWeights[data.exercise_name] = data.weight
+
+  // Update weights
+  const { error } = await supabase
+    .from('attendance')
+    .update({ current_weights: currentWeights })
+    .eq('id', data.attendance_id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/attending')
+  
+  return { success: true }
+}
+
 export async function getClientAttendance(clientId: string, limit?: number) {
   const supabase = await createSupabaseClient()
   
@@ -297,6 +332,7 @@ export async function getAttendingClients() {
     workout_started_at: record.workout_started_at,
     attendance_id: record.id,
     workout: record.workout,
+    current_weights: record.current_weights || {},
   }))
 
   return { data: attendingClients }
