@@ -9,8 +9,9 @@ import {
   Text,
   Heading,
 } from "@chakra-ui/react"
-import { X, Check, Calendar, Play } from "lucide-react"
+import { X, Check, Calendar } from "lucide-react"
 import { markAttendance } from "@/actions/attendance"
+import WorkoutSelectionModal from "./WorkoutSelectionModal"
 
 type AttendanceModalProps = {
   clientId: string
@@ -31,6 +32,7 @@ export default function AttendanceModal({
 }: AttendanceModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showWorkoutSelection, setShowWorkoutSelection] = useState(false)
 
   const normalizeTime = (time: string): string => {
     if (time.length === 5) {
@@ -39,7 +41,7 @@ export default function AttendanceModal({
     return time
   }
 
-  const handleMarkAttendance = async (status: 'scheduled' | 'attending' | 'attended' | 'missed' | 'rescheduled') => {
+  const handleMarkAttendance = async (status: 'scheduled' | 'attending' | 'attended' | 'missed' | 'rescheduled', workoutId?: string) => {
     setLoading(true)
     setError('')
 
@@ -50,6 +52,7 @@ export default function AttendanceModal({
       scheduled_date: scheduledDate,
       scheduled_time: normalizedTime,
       status,
+      workout_id: workoutId,
     })
 
     if (result.error) {
@@ -58,6 +61,26 @@ export default function AttendanceModal({
     } else {
       onClose()
     }
+  }
+
+  const handleStartSession = () => {
+    setShowWorkoutSelection(true)
+  }
+
+  const handleWorkoutSelected = (workoutId: string) => {
+    setShowWorkoutSelection(false)
+    handleMarkAttendance('attending', workoutId)
+  }
+
+  if (showWorkoutSelection) {
+    return (
+      <WorkoutSelectionModal
+        clientId={clientId}
+        clientName={clientName}
+        onSelect={handleWorkoutSelected}
+        onClose={() => setShowWorkoutSelection(false)}
+      />
+    )
   }
 
   return (
@@ -117,7 +140,6 @@ export default function AttendanceModal({
           <VStack align="stretch" gap="3" mt="4">
             {currentStatus === 'scheduled' && (
               <>
-                {/* Start Attending Button */}
                 <Button
                   w="full"
                   bg="button.primary.bg"
@@ -127,16 +149,12 @@ export default function AttendanceModal({
                   h="12"
                   fontSize="md"
                   fontWeight="medium"
-                  onClick={() => handleMarkAttendance('attending')}
+                  onClick={handleStartSession}
                   isDisabled={loading}
                 >
-                  <HStack gap="2">
-                    <Play size={20} />
-                    <Text>Start Session</Text>
-                  </HStack>
+                  Start Session
                 </Button>
 
-                {/* Mark as Absent */}
                 <Button
                   w="full"
                   bg="transparent"
@@ -154,7 +172,6 @@ export default function AttendanceModal({
                   Mark as Absent
                 </Button>
 
-                {/* Reschedule */}
                 <Button
                   w="full"
                   bg="transparent"
@@ -176,7 +193,6 @@ export default function AttendanceModal({
 
             {currentStatus === 'attending' && (
               <>
-                {/* Mark as Completed */}
                 <Button
                   w="full"
                   bg="button.primary.bg"
@@ -195,7 +211,6 @@ export default function AttendanceModal({
                   </HStack>
                 </Button>
 
-                {/* Undo - Back to Scheduled */}
                 <Button
                   w="full"
                   bg="transparent"
@@ -214,46 +229,39 @@ export default function AttendanceModal({
             )}
 
             {currentStatus === 'attended' && (
-              <>
-                {/* Undo - Back to Attending */}
-                <Button
-                  w="full"
-                  bg="button.primary.bg"
-                  color="button.primary.text"
-                  _hover={{ bg: "button.primary.hover" }}
-                  borderRadius="base"
-                  h="12"
-                  fontSize="md"
-                  fontWeight="medium"
-                  onClick={() => handleMarkAttendance('attending')}
-                  isDisabled={loading}
-                >
-                  Undo (Back to Attending)
-                </Button>
-              </>
+              <Button
+                w="full"
+                bg="button.primary.bg"
+                color="button.primary.text"
+                _hover={{ bg: "button.primary.hover" }}
+                borderRadius="base"
+                h="12"
+                fontSize="md"
+                fontWeight="medium"
+                onClick={() => handleMarkAttendance('scheduled')}
+                isDisabled={loading}
+              >
+                Undo (Back to Scheduled)
+              </Button>
             )}
 
             {currentStatus === 'missed' && (
-              <>
-                {/* Undo - Back to Scheduled */}
-                <Button
-                  w="full"
-                  bg="button.primary.bg"
-                  color="button.primary.text"
-                  _hover={{ bg: "button.primary.hover" }}
-                  borderRadius="base"
-                  h="12"
-                  fontSize="md"
-                  fontWeight="medium"
-                  onClick={() => handleMarkAttendance('scheduled')}
-                  isDisabled={loading}
-                >
-                  Undo (Back to Scheduled)
-                </Button>
-              </>
+              <Button
+                w="full"
+                bg="button.primary.bg"
+                color="button.primary.text"
+                _hover={{ bg: "button.primary.hover" }}
+                borderRadius="base"
+                h="12"
+                fontSize="md"
+                fontWeight="medium"
+                onClick={() => handleMarkAttendance('scheduled')}
+                isDisabled={loading}
+              >
+                Undo (Back to Scheduled)
+              </Button>
             )}
 
-            {/* Cancel */}
             <Button
               w="full"
               bg="transparent"

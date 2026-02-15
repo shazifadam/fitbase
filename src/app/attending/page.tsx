@@ -42,23 +42,11 @@ export default function AttendingPage() {
     })
 
     if (result.success) {
-      // Remove from attending list
       setAttendingClients(prev => prev.filter(c => c.client_id !== client.client_id))
       setExpandedClient(null)
     }
 
     setCompletingClient(null)
-  }
-
-  // Mock workout data - will be replaced with real data from database
-  const mockWorkout = {
-    session_title: 'Session 1: Upper Body Strength',
-    exercises: [
-      { name: 'Bench Press', sets: 4, reps: 10 },
-      { name: 'Pull-ups', sets: 3, reps: 8 },
-      { name: 'Shoulder Press', sets: 3, reps: 12 },
-      { name: 'Tricep Dips', sets: 3, reps: 15 },
-    ]
   }
 
   if (loading) {
@@ -71,7 +59,6 @@ export default function AttendingPage() {
 
   return (
     <Box minH="100vh" bg="bg" pb="32">
-      {/* Header */}
       <VStack 
         align="stretch" 
         gap="4" 
@@ -94,7 +81,6 @@ export default function AttendingPage() {
         </Heading>
       </VStack>
 
-      {/* Attending Clients List */}
       {attendingClients.length === 0 ? (
         <Box px="4" mt="6" textAlign="center">
           <Text fontSize="md" fontWeight="normal" color="fg.muted">
@@ -109,6 +95,7 @@ export default function AttendingPage() {
           {attendingClients.map((client) => {
             const isExpanded = expandedClient === client.client_id
             const isCompleting = completingClient === client.client_id
+            const workout = client.workout
 
             return (
               <Box
@@ -118,7 +105,6 @@ export default function AttendingPage() {
                 borderWidth="1px"
                 borderColor="border"
               >
-                {/* Client Header */}
                 <HStack
                   justify="space-between"
                   p="4"
@@ -141,31 +127,44 @@ export default function AttendingPage() {
                   )}
                 </HStack>
 
-                {/* Expanded Workout Details */}
                 {isExpanded && (
                   <VStack align="stretch" gap="3" px="4" pb="4" borderTopWidth="1px" borderColor="border">
-                    <Text fontSize="md" fontight="medium" color="fg" mt="3">
-                      {mockWorkout.session_title}
-                    </Text>
-
-                    {mockWorkout.exercises.map((exercise, index) => (
-                      <HStack key={index} justify="space-between" py="2">
-                        <Text fontSize="sm" fontWeight="normal" color="fg">
-                          {exercise.name}
+                    {workout ? (
+                      <>
+                        <Text fontSize="md" fontWeight="medium" color="fg" mt="3">
+                          {workout.name}
                         </Text>
                         <Text fontSize="sm" fontWeight="normal" color="fg.muted">
-                          {exercise.sets} × {exercise.reps}
+                          {workout.description}
                         </Text>
-                      </HStack>
-                    ))}
+
+                        {workout.exercises && Array.isArray(workout.exercises) && workout.exercises.length > 0 && (
+                          <VStack align="stretch" gap="2" mt="2">
+                            {workout.exercises.map((exercise: any, index: number) => (
+                              <HStack key={index} justify="space-between" py="2">
+                                <Text fontSize="sm" fontWeight="normal" color="fg">
+                                  {exercise.name}
+                                </Text>
+                                <Text fontSize="sm" fontWeight="normal" color="fg.muted">
+                                  {exercise.sets} × {exercise.reps}
+                                </Text>
+                              </HStack>
+                            ))}
+                          </VStack>
+                        )}
+                      </>
+                    ) : (
+                      <Text fontSize="sm" fontWeight="normal" color="fg.muted" mt="3">
+                        No workout selected for this session
+                      </Text>
+                    )}
 
                     <Text fontSize="xs" fontWeight="normal" color="fg.muted" mt="2">
                       Started at {client.workout_started_at ? new Date(client.workout_started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Unknown'}
                     </Text>
 
-                    {/* Mark as Completed Button */}
                     <Button
-                     w="full"
+                      w="full"
                       bg="button.primary.bg"
                       color="button.primary.text"
                       _hover={{ bg: "button.primary.hover" }}

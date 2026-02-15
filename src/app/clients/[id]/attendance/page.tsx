@@ -51,13 +51,9 @@ export default function ClientAttendancePage() {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth() + 1
 
-    console.log('Loading attendance for:', year, month, clientId)
-
     const result = await getClientMonthlyAttendance(clientId, year, month)
-    console.log('Attendance result:', result)
     
     if (result.data) {
-      console.log('Setting attendance data:', result.data)
       setAttendanceData(result.data)
     }
     setLoading(false)
@@ -110,9 +106,6 @@ export default function ClientAttendancePage() {
   const missedCount = displayData.filter(d => d.status === 'missed').length
   const totalScheduled = displayData.length
 
-  console.log('Display data:', displayData)
-  console.log('Stats:', { attendedCount, missedCount, totalScheduled })
-
   if (loading) {
     return (
       <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center">
@@ -123,7 +116,6 @@ export default function ClientAttendancePage() {
 
   return (
     <Box minH="100vh" bg="bg" pb="32">
-      {/* Header */}
       <VStack 
         align="stretch" 
         gap="4" 
@@ -152,7 +144,6 @@ export default function ClientAttendancePage() {
         </Heading>
       </VStack>
 
-      {/* Filter Panel */}
       {showFilter && (
         <Box bg="bg.surface" borderBottomWidth="1px" borderColor="border" p="4">
           <VStack align="stretch" gap="3">
@@ -217,7 +208,6 @@ export default function ClientAttendancePage() {
         </Box>
       )}
 
-      {/* Active Filter Badge */}
       {isFiltering && (
         <Box px="4" mt="4">
           <HStack
@@ -236,7 +226,6 @@ export default function ClientAttendancePage() {
         </Box>
       )}
 
-      {/* Month Navigation */}
       {!isFiltering && (
         <HStack justify="space-between" px="4" mt="6">
           <Button
@@ -281,7 +270,6 @@ export default function ClientAttendancePage() {
         </Box>
       )}
 
-      {/* Stats */}
       <HStack gap="3" px="4" mt="4">
         <Box flex="1" bg="bg.surface" borderRadius="base" borderWidth="1px" borderColor="border" p="3">
           <Text fontSize="xs" color="fg.muted" mb="1">Attended</Text>
@@ -297,7 +285,6 @@ export default function ClientAttendancePage() {
         </Box>
       </HStack>
 
-      {/* Calendar or List View */}
       <Box px="4" mt="6">
         {isFiltering ? (
           <VStack align="stretch" gap="2">

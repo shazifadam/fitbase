@@ -8,6 +8,7 @@ export async function markAttendance(data: {
   scheduled_date: string
   scheduled_time: string
   status: 'scheduled' | 'attending' | 'attended' | 'missed' | 'rescheduled'
+  workout_id?: string
   rescheduled_to?: string
   reschedule_reason?: string
 }) {
@@ -34,6 +35,7 @@ export async function markAttendance(data: {
 
   const updateData: any = {
     status: data.status,
+    workout_id: data.workout_id || null,
     rescheduled_to: data.rescheduled_to || null,
     reschedule_reason: data.reschedule_reason || null,
   }
@@ -118,7 +120,6 @@ export async function getClientMonthlyAttendance(clientId: string, year: number,
 
   if (!trainer) return { error: 'Trainer not found' }
 
-  // Get client details
   const { data: client } = await supabase
     .from('clients')
     .select('schedule_set, custom_days, session_times')
@@ -127,8 +128,6 @@ export async function getClientMonthlyAttendance(clientId: string, year: number,
 
   if (!client) return { error: 'Client not found' }
 
-  // Get attendance records for the month
-  // Create date strings without timezone conversion
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`
   const daysInMonth = new Date(year, month, 0).getDate()
   const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
@@ -141,17 +140,11 @@ export async function getClientMonthlyAttendance(clientId: string, year: number,
     .gte('scheduled_date', startDate)
     .lte('scheduled_date', endDate)
 
-  console.log('[Server] Attendance records:', attendanceRecords)
-
-  // Generate all scheduled dates for the month
   const scheduledDates: any[] = []
 
   for (let day = 1; day <= daysInMonth; day++) {
-    // Create date string without timezone conversion
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    
-    // Get day of week from the date string
-    const date = new Date(dateStr + 'T12:00:00') // Use noon to avoid timezone issues
+    const date = new Date(dateStr + 'T12:00:00')
     const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
 
     let isScheduled = false
@@ -165,37 +158,21 @@ export async function getClientMonthlyAttendance(clientId: string, year: number,
     }
 
     if (isScheduled) {
-      const sessionTime = client.session_times?.[dayOfWeek] || '09:00'
-      const normalizedSessionTime = sessionTime.length === 5 ? `${sessionTime}:00` : sessionTime
-
-      const attendance = attendanceRecords?.find(a => {
-        const normalizedDbTime = a.scheduled_time.length === 5 ? `${a.scheduled_time}:00` : a.scheduled_time
-        const match = a.scheduled_date === dateStr && normalizedDbTime === normalizedSessionTime
-        
-        if (match) {
-          console.log(`[Server] MATCH FOUND for ${dateStr}:`, a.status)
-        }
-        
-        return match
-      })
-
-      console.log(`[Server] Day ${day} (${dateStr}, ${dayOfWeek}):`, {
-        sessionTime,
-        status: attendance?.status || 'scheduled'
-      })
+      const expectedTime = client.session_times?.[dayOfWeek]
+      const attendance = attendanceRecords?.find(a => a.scheduled_date === dateStr)
+      const sessionTime = attendance ? attendance.scheduled_time.substring(0, 5) : (expectedTime || '09:00')
+      const status = attendance?.status || 'scheduled'
 
       scheduledDates.push({
         date: dateStr,
         day: day,
         dayOfWeek,
         scheduled_time: sessionTime,
-        status: attendance?.status || 'scheduled',
+        status: status,
         marked_at: attendance?.created_at || null,
       })
     }
   }
-
-  console.log('[Server] Final count - Total:', scheduledDates.length, 'Attended:', scheduledDates.filter(d => d.status === 'attended').length)
 
   return { data: scheduledDates }
 }
@@ -255,16 +232,22 @@ export async function getTodaySchedule() {
     const sessionTime = client.session_times?.[dayOfWeek] || '09:00'
     const normalizedSessionTime = sessionTime.length === 5 ? `${sessionTime}:00` : sessionTime
     
-    const attendance = attendanceRecords?.find(a => {
+    let attendance = attendanceRecords?.find(a => {
       const normalizedDbTime = a.scheduled_time.length === 5 ? `${a.scheduled_time}:00` : a.scheduled_time
       return a.client_id === client.id && normalizedDbTime === normalizedSessionTime
     })
+
+    if (!attendance) {
+      attendance = attendanceRecords?.find(a => a.client_id === client.id)
+    }
+
+    const actualSessionTime = attendance?.scheduled_time.substring(0, 5) || sessionTime
 
     return {
       client_id: client.id,
       client_name: client.name,
       training_programs: client.training_programs,
-      scheduled_time: sessionTime,
+      scheduled_time: actualSessionTime,
       status: attendance?.status || 'scheduled',
       attendance_id: attendance?.id || null,
       marked_at: attendance?.created_at || null,
@@ -297,7 +280,8 @@ export async function getAttendingClients() {
     .from('attendance')
     .select(`
       *,
-      client:clients(*)
+      client:clients(*),
+      workout:workouts(*)
     `)
     .eq('trainer_id', trainer.id)
     .eq('scheduled_date', today)
@@ -312,6 +296,7 @@ export async function getAttendingClients() {
     scheduled_time: record.scheduled_time,
     workout_started_at: record.workout_started_at,
     attendance_id: record.id,
+    workout: record.workout,
   }))
 
   return { data: attendingClients }
